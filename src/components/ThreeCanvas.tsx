@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {
   BoneId,
   CharacterModelConfig,
@@ -10,6 +11,7 @@ import {
   PlaygroundToy,
 } from '../types';
 import { playPopSound, playBoingSound } from '../utils/soundEffects';
+import { requestGenerated3DModel } from '../utils/generate3D';
 
 // Screen-space pixels the mouse may move during a press before mouseUp is
 // treated as a camera-orbit drag instead of a bone/creature/ground click.
@@ -357,6 +359,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         creaturesGroupRef.current?.add(group);
         creatureMeshesMapRef.current.set(c.id, group);
         lastSyncedTransformRef.current.set(c.id, transformKey);
+        enhanceCreatureWithGeneratedModel(group, c.drawingDataUrl);
       } else {
         // Autonomous behaviors (wander/bounce/dance/crazy) move this group
         // directly in the render loop and stash a live targetPosition on its
@@ -1288,6 +1291,7 @@ export function buildPaperCutoutMesh(drawingDataUrl: string, depthThickness = 0.
   cardMesh.position.y = 1.0;
   cardMesh.castShadow = true;
   cardMesh.receiveShadow = true;
+  cardMesh.name = 'flat_cutout_card';
   group.add(cardMesh);
 
   // Soft round ground shadow disc
@@ -1304,6 +1308,59 @@ export function buildPaperCutoutMesh(drawingDataUrl: string, depthThickness = 0.
   group.add(shadowDisc);
 
   return group;
+}
+
+// Kicks off background generation of a real 3D mesh for a creature that's
+// already showing its flat cutout card, and swaps the card out for the mesh
+// if/when generation succeeds. Never throws and never blocks - if the kid
+// has moved on (or generation just fails/times out/isn't configured), the
+// flat card simply stays as it already was.
+function enhanceCreatureWithGeneratedModel(group: THREE.Group, drawingDataUrl: string) {
+  requestGenerated3DModel(drawingDataUrl).then((modelUrl) => {
+    if (!modelUrl || !group.parent) return;
+
+    new GLTFLoader().load(
+      modelUrl,
+      (gltf: GLTF) => {
+        if (!group.parent) {
+          disposeObject3D(gltf.scene);
+          return;
+        }
+
+        // Scale to roughly the flat card's height (it spans y=0 to y=2),
+        // then sit the model's base on the ground, centered on X/Z, where
+        // the card used to be.
+        const size = new THREE.Box3().setFromObject(gltf.scene).getSize(new THREE.Vector3());
+        const scale = 2.0 / (size.y || 1);
+        gltf.scene.scale.setScalar(scale);
+
+        const box = new THREE.Box3().setFromObject(gltf.scene);
+        const center = box.getCenter(new THREE.Vector3());
+        gltf.scene.position.x -= center.x;
+        gltf.scene.position.z -= center.z;
+        gltf.scene.position.y -= box.min.y;
+
+        gltf.scene.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+
+        const cardMesh = group.getObjectByName('flat_cutout_card');
+        if (cardMesh) {
+          group.remove(cardMesh);
+          disposeObject3D(cardMesh);
+        }
+        group.add(gltf.scene);
+      },
+      undefined,
+      () => {
+        // Generation succeeded server-side but the GLB failed to load
+        // client-side (bad URL, decode error, etc.) - leave the flat card.
+      }
+    );
+  });
 }
 
 export function buildToyMesh(toyType: string, colorHex: string): THREE.Group {
