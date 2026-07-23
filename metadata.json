@@ -1,0 +1,8 @@
+{
+  "name": "3D Paper Drawing World",
+  "description": "Upload hand-drawn paper creations and watch them come alive in an interactive 3D living playground world with autonomous behaviors, direct controls, and interactive toys.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
