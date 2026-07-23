@@ -8,6 +8,7 @@ import {
   Play,
   Trees,
   Palette,
+  RotateCcw,
 } from 'lucide-react';
 import { AnimationClip } from '../types';
 import { PRESET_CLIPS } from '../constants/animationDefaults';
@@ -93,6 +94,51 @@ export const Header: React.FC<HeaderProps> = ({
             <Palette className="w-4 h-4" /> 🎨 Draw Screen Hero
           </button>
         )}
+
+        {/* Preset Animation Clips & Reset */}
+        <div className="relative">
+          <button
+            onClick={() => setShowPresetsDropdown((v) => !v)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs shadow-lg transition-transform active:scale-95"
+          >
+            <Film className="w-4 h-4" /> Presets
+          </button>
+
+          {showPresetsDropdown && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowPresetsDropdown(false)}
+              />
+              <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 flex flex-col gap-1 z-50">
+                {PRESET_CLIPS.map((clip) => (
+                  <button
+                    key={clip.id}
+                    onClick={() => handleSelectClip(clip)}
+                    className="flex items-start gap-2 p-2.5 rounded-xl hover:bg-slate-800 text-left transition-colors"
+                  >
+                    <Play className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                    <span className="flex flex-col">
+                      <span className="text-xs font-bold text-white">{clip.name}</span>
+                      <span className="text-[10px] text-slate-400">{clip.description}</span>
+                    </span>
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    playBoingSound();
+                    onResetProject();
+                    setShowPresetsDropdown(false);
+                  }}
+                  className="flex items-center gap-2 p-2.5 rounded-xl hover:bg-rose-900/40 text-rose-300 text-left transition-colors border-t border-slate-800 mt-1 pt-2.5"
+                >
+                  <RotateCcw className="w-4 h-4 shrink-0" />
+                  <span className="text-xs font-bold">Reset Project</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* AI Director Modal Button */}
         <button

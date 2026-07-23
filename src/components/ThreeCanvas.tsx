@@ -11,6 +11,32 @@ import {
 } from '../types';
 import { playPopSound, playBoingSound } from '../utils/soundEffects';
 
+// Screen-space pixels the mouse may move during a press before mouseUp is
+// treated as a camera-orbit drag instead of a bone/creature/ground click.
+const CLICK_DRAG_THRESHOLD = 6;
+
+// Recursively frees GPU resources (geometries, materials, textures) for an
+// Object3D subtree before it's discarded, so rebuilding the environment or
+// character rig doesn't leak memory over a long-running kiosk session.
+function disposeObject3D(obj: THREE.Object3D) {
+  obj.traverse((child) => {
+    const mesh = child as THREE.Mesh | THREE.Points;
+    if ((mesh as THREE.Mesh).geometry) {
+      mesh.geometry.dispose();
+    }
+    const material = (mesh as THREE.Mesh).material;
+    if (material) {
+      const materials = Array.isArray(material) ? material : [material];
+      materials.forEach((mat) => {
+        Object.values(mat).forEach((value) => {
+          if (value instanceof THREE.Texture) value.dispose();
+        });
+        mat.dispose();
+      });
+    }
+  });
+}
+
 interface ThreeCanvasProps {
   character: CharacterModelConfig;
   environment: EnvironmentConfig;
@@ -52,6 +78,10 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   // World Creatures Group Ref & Mesh Map
   const creaturesGroupRef = useRef<THREE.Group | null>(null);
   const creatureMeshesMapRef = useRef<Map<string, THREE.Group>>(new Map());
+  // Tracks the last position/rotation explicitly pushed from React state per
+  // creature, so autonomous wander/bounce motion (applied directly to the
+  // Three.js group in the render loop) isn't stomped by unrelated re-syncs.
+  const lastSyncedTransformRef = useRef<Map<string, string>>(new Map());
 
   // Playground Toys Group Ref & Mesh Map
   const toysGroupRef = useRef<THREE.Group | null>(null);
@@ -69,6 +99,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const isDraggingRef = useRef(false);
   const previousMouseRef = useRef({ x: 0, y: 0 });
   const cameraAngleRef = useRef({ phi: Math.PI / 6, theta: Math.PI / 4, radius: 8 });
+  // Total screen-space distance moved during the current mouse press, used
+  // to tell a camera-orbit drag apart from a click on mouseUp.
+  const dragDistanceRef = useRef(0);
 
   const [hoveredBone, setHoveredBone] = useState<BoneId | null>(null);
 
@@ -164,7 +197,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       const elapsedTime = clock.getElapsedTime();
 
       // Gentle floating particle animation
-      if (particlesGroupRef.current) {
+      if (particlesGroupRef.current && particlesGroupRef.current.visible) {
         particlesGroupRef.current.rotation.y += 0.001;
         const positions = particlesGroupRef.current.geometry.attributes.position.array as Float32Array;
         for (let i = 1; i < positions.length; i += 3) {
@@ -247,6 +280,8 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     return () => {
       cancelAnimationFrame(animId);
       resizeObserver.disconnect();
+      disposeObject3D(scene);
+      renderer.dispose();
       if (rendererRef.current && rendererRef.current.domElement) {
         rendererRef.current.domElement.remove();
       }
@@ -287,6 +322,13 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     buildKidsLandEnvironment(sceneRef.current, envDecorGroupRef.current, environment);
   }, [environment]);
 
+  // Toggle Floating Sparkle Particle Visibility
+  useEffect(() => {
+    if (particlesGroupRef.current) {
+      particlesGroupRef.current.visible = environment.particlesEnabled;
+    }
+  }, [environment.particlesEnabled]);
+
   // Sync World Creatures 3D Meshes
   useEffect(() => {
     if (!creaturesGroupRef.current) return;
@@ -295,13 +337,17 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     creatureMeshesMapRef.current.forEach((meshGroup, id) => {
       if (!creatures.find((c) => c.id === id)) {
         creaturesGroupRef.current?.remove(meshGroup);
+        disposeObject3D(meshGroup);
         creatureMeshesMapRef.current.delete(id);
+        lastSyncedTransformRef.current.delete(id);
       }
     });
 
     // Add or update creature meshes
     creatures.forEach((c) => {
       let group = creatureMeshesMapRef.current.get(c.id);
+      const transformKey = `${c.position.join(',')}|${c.rotationY}`;
+
       if (!group) {
         group = buildPaperCutoutMesh(c.drawingDataUrl, c.depthThickness);
         group.position.set(c.position[0], c.position[1], c.position[2]);
@@ -310,10 +356,27 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         (group as any).userData = c;
         creaturesGroupRef.current?.add(group);
         creatureMeshesMapRef.current.set(c.id, group);
+        lastSyncedTransformRef.current.set(c.id, transformKey);
       } else {
-        (group as any).userData = c;
-        group.position.set(c.position[0], c.position[1], c.position[2]);
-        group.rotation.y = c.rotationY;
+        // Autonomous behaviors (wander/bounce/dance/crazy) move this group
+        // directly in the render loop and stash a live targetPosition on its
+        // userData — neither is ever written back to React state. Merge
+        // rather than replace userData so an unrelated creature/toy update
+        // doesn't wipe an in-progress wander target, and only snap the
+        // position/rotation when React's copy actually changed (a real
+        // direct-drive move or ground-click command), not just because some
+        // other creature's state changed.
+        const liveTargetPosition = (group.userData as WorldCreature | undefined)?.targetPosition;
+        (group as any).userData = {
+          ...c,
+          targetPosition: c.targetPosition ?? liveTargetPosition,
+        };
+
+        if (lastSyncedTransformRef.current.get(c.id) !== transformKey) {
+          group.position.set(c.position[0], c.position[1], c.position[2]);
+          group.rotation.y = c.rotationY;
+          lastSyncedTransformRef.current.set(c.id, transformKey);
+        }
       }
     });
   }, [creatures]);
@@ -326,6 +389,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     toyMeshesMapRef.current.forEach((toyGroup, id) => {
       if (!toys.find((t) => t.id === id)) {
         toysGroupRef.current?.remove(toyGroup);
+        disposeObject3D(toyGroup);
         toyMeshesMapRef.current.delete(id);
       }
     });
@@ -430,6 +494,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     isDraggingRef.current = true;
     previousMouseRef.current = { x: e.clientX, y: e.clientY };
+    dragDistanceRef.current = 0;
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -439,6 +504,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
       const deltaX = e.clientX - previousMouseRef.current.x;
       const deltaY = e.clientY - previousMouseRef.current.y;
       previousMouseRef.current = { x: e.clientX, y: e.clientY };
+      dragDistanceRef.current += Math.hypot(deltaX, deltaY);
 
       cameraAngleRef.current.theta -= deltaX * 0.008;
       cameraAngleRef.current.phi = Math.max(
@@ -477,11 +543,15 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
-    if (isDraggingRef.current) {
-      isDraggingRef.current = false;
+    const wasDragging = isDraggingRef.current;
+    isDraggingRef.current = false;
+
+    // If the mouse dragged more than a few pixels this was a camera orbit,
+    // not a click — don't also select a bone / creature / move the ground.
+    if (wasDragging && dragDistanceRef.current > CLICK_DRAG_THRESHOLD) {
+      return;
     }
 
-    // If mouse didn't drag much, interpret as click to select bone
     if (!mountRef.current || !cameraRef.current) return;
     const rect = mountRef.current.getBoundingClientRect();
     const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -587,7 +657,9 @@ function buildKidsLandEnvironment(
 ) {
   // Clear old decor
   while (envGroup.children.length > 0) {
-    envGroup.remove(envGroup.children[0]);
+    const child = envGroup.children[0];
+    envGroup.remove(child);
+    disposeObject3D(child);
   }
 
   // Set scene background based on theme
@@ -944,7 +1016,9 @@ function buildRiggedCharacter(
 ) {
   // Clear root
   while (rootGroup.children.length > 0) {
-    rootGroup.remove(rootGroup.children[0]);
+    const child = rootGroup.children[0];
+    rootGroup.remove(child);
+    disposeObject3D(child);
   }
 
   const boneMap = new Map<BoneId, THREE.Group>();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles, Wand2, X, Loader2, Play } from 'lucide-react';
-import { Keyframe, CharacterType } from '../types';
+import { Keyframe, CharacterType, Vector3D } from '../types';
 import { PRESET_CLIPS } from '../constants/animationDefaults';
 import { playFanfareSound, playBoingSound } from '../utils/soundEffects';
 
@@ -10,6 +10,21 @@ interface AIPromptModalProps {
   characterType: CharacterType;
   onApplyAIKeyframes: (keyframes: Keyframe[]) => void;
 }
+
+// The server prompt (server.ts) instructs Gemini to return each bone as a
+// flat { x, y, z } rotation, not the client's nested BoneTransform shape
+// ({ rotation: { x, y, z } }). Normalize defensively — handles the flat
+// shape the API is actually told to produce as well as an already-nested
+// one — so a well-formed AI response can't crash the pose-apply effect.
+const toRotation = (raw: any, fallback: Vector3D): Vector3D => {
+  if (!raw || typeof raw !== 'object') return fallback;
+  const source = raw.rotation && typeof raw.rotation === 'object' ? raw.rotation : raw;
+  return {
+    x: typeof source.x === 'number' ? source.x : fallback.x,
+    y: typeof source.y === 'number' ? source.y : fallback.y,
+    z: typeof source.z === 'number' ? source.z : fallback.z,
+  };
+};
 
 const SAMPLE_PROMPTS = [
   'Make the character do a hilarious backflip and land in a superhero pose!',
@@ -57,12 +72,12 @@ export const AIPromptModal: React.FC<AIPromptModalProps> = ({
             time: kf.time ?? idx * 0.5,
             label: `AI: ${kf.label || 'Pose ' + (idx + 1)}`,
             pose: {
-              body: kf.pose?.body || { rotation: { x: 0, y: 0, z: 0 } },
-              head: kf.pose?.head || { rotation: { x: 0, y: 0, z: 0 } },
-              leftArm: kf.pose?.leftArm || { rotation: { x: 0, y: 0, z: 15 } },
-              rightArm: kf.pose?.rightArm || { rotation: { x: 0, y: 0, z: -15 } },
-              leftLeg: kf.pose?.leftLeg || { rotation: { x: 0, y: 0, z: 0 } },
-              rightLeg: kf.pose?.rightLeg || { rotation: { x: 0, y: 0, z: 0 } },
+              body: { rotation: toRotation(kf.pose?.body, { x: 0, y: 0, z: 0 }) },
+              head: { rotation: toRotation(kf.pose?.head, { x: 0, y: 0, z: 0 }) },
+              leftArm: { rotation: toRotation(kf.pose?.leftArm, { x: 0, y: 0, z: 15 }) },
+              rightArm: { rotation: toRotation(kf.pose?.rightArm, { x: 0, y: 0, z: -15 }) },
+              leftLeg: { rotation: toRotation(kf.pose?.leftLeg, { x: 0, y: 0, z: 0 }) },
+              rightLeg: { rotation: toRotation(kf.pose?.rightLeg, { x: 0, y: 0, z: 0 }) },
               tail: { rotation: { x: 0, y: 0, z: 0 } },
               accessory: { rotation: { x: 0, y: 0, z: 0 } },
             },
