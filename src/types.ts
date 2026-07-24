@@ -36,6 +36,9 @@ export type CharacterType =
   | 'blocky' 
   | 'panda' 
   | 'rocket'
+  | 'unicorn'
+  | 'cat'
+  | 'hero'
   | 'doodle';
 
 export interface CharacterColors {
@@ -142,6 +145,7 @@ export interface WorldCreature {
   heightOffset?: number; // jumping/bouncing height offset
   tiltAngle?: number; // waddling angle
   depthThickness: number; // 2.5D extruded paper depth thickness
+  templateId?: string; // e.g. 'dino', 'robot', 'unicorn', 'cat', 'rocket', 'monster', 'hero', 'blank'
 }
 
 export interface ProjectData {
