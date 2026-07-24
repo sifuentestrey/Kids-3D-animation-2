@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { playBoingSound, playFanfareSound, playPopSound } from '../utils/soundEffects';
 import confetti from 'canvas-confetti';
+import { TEMPLATE_DEFINITIONS, TemplateDefinition } from '../utils/templateDrawings';
 
 interface PrintTemplatesModalProps {
   isOpen: boolean;
@@ -26,285 +27,8 @@ interface PrintTemplatesModalProps {
   onOpenUploadModal?: () => void;
 }
 
-export interface PaperTemplate {
-  id: string;
-  name: string;
-  tagline: string;
-  category: 'Creatures' | 'Robots' | 'Fantasy' | 'Space' | 'Blank';
-  emoji: string;
-  color: string;
-  badgeBg: string;
-  recommendedBehavior: string;
-  soundFx: string;
-  description: string;
-  svgPath: (ctx: CanvasRenderingContext2D, width: number, height: number) => void;
-}
-
-export const PAPER_TEMPLATES: PaperTemplate[] = [
-  {
-    id: 'dino',
-    name: 'Jumping T-Rex Dino 🦖',
-    tagline: 'Draw sharp teeth, scales & big stompy feet!',
-    category: 'Creatures',
-    emoji: '🦖',
-    color: '#10b981',
-    badgeBg: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
-    recommendedBehavior: 'BOING JUMP & STOMP',
-    soundFx: 'boing',
-    description: 'Bounces high into the sky and stomps on beachballs in 3D!',
-    svgPath: (ctx, w, h) => {
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([8, 8]);
-      // Head & snout
-      ctx.beginPath();
-      ctx.arc(w * 0.45, h * 0.22, w * 0.1, 0, Math.PI * 2);
-      ctx.stroke();
-      // Snout rectangle
-      ctx.strokeRect(w * 0.45, h * 0.17, w * 0.2, h * 0.08);
-      // Eye & teeth guidelines
-      ctx.beginPath();
-      ctx.arc(w * 0.42, h * 0.2, 8, 0, Math.PI * 2);
-      ctx.stroke();
-      // Body
-      ctx.beginPath();
-      ctx.ellipse(w * 0.45, h * 0.45, w * 0.18, h * 0.16, 0.2, 0, Math.PI * 2);
-      ctx.stroke();
-      // Tail
-      ctx.beginPath();
-      ctx.moveTo(w * 0.3, h * 0.48);
-      ctx.quadraticCurveTo(w * 0.12, h * 0.55, w * 0.08, h * 0.4);
-      ctx.quadraticCurveTo(w * 0.18, h * 0.42, w * 0.32, h * 0.42);
-      ctx.stroke();
-      // Legs
-      ctx.strokeRect(w * 0.38, h * 0.58, w * 0.07, h * 0.18);
-      ctx.strokeRect(w * 0.48, h * 0.58, w * 0.07, h * 0.18);
-      // Feet
-      ctx.strokeRect(w * 0.36, h * 0.74, w * 0.1, h * 0.04);
-      ctx.strokeRect(w * 0.46, h * 0.74, w * 0.1, h * 0.04);
-      // Tiny arms
-      ctx.strokeRect(w * 0.55, h * 0.38, w * 0.08, h * 0.04);
-      ctx.setLineDash([]);
-    },
-  },
-  {
-    id: 'robot',
-    name: 'Dancing Beep Robot 🤖',
-    tagline: 'Add mechanical gears, antennas & laser eyes!',
-    category: 'Robots',
-    emoji: '🤖',
-    color: '#3b82f6',
-    badgeBg: 'bg-blue-500/20 text-blue-400 border-blue-500/40',
-    recommendedBehavior: 'ROBOT MARCH DANCE',
-    soundFx: 'march',
-    description: 'Marches to the beat and dances around candy trees!',
-    svgPath: (ctx, w, h) => {
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([8, 8]);
-      // Head
-      ctx.strokeRect(w * 0.33, h * 0.12, w * 0.34, h * 0.18);
-      // Antenna
-      ctx.beginPath();
-      ctx.moveTo(w * 0.5, h * 0.12);
-      ctx.lineTo(w * 0.5, h * 0.04);
-      ctx.arc(w * 0.5, h * 0.03, 10, 0, Math.PI * 2);
-      ctx.stroke();
-      // Eyes
-      ctx.strokeRect(w * 0.38, h * 0.16, w * 0.08, h * 0.06);
-      ctx.strokeRect(w * 0.54, h * 0.16, w * 0.08, h * 0.06);
-      // Mouth grid
-      ctx.strokeRect(w * 0.4, h * 0.24, w * 0.2, h * 0.03);
-      // Torso
-      ctx.strokeRect(w * 0.28, h * 0.33, w * 0.44, h * 0.28);
-      // Chest buttons
-      ctx.beginPath();
-      ctx.arc(w * 0.4, h * 0.42, 14, 0, Math.PI * 2);
-      ctx.arc(w * 0.5, h * 0.42, 14, 0, Math.PI * 2);
-      ctx.arc(w * 0.6, h * 0.42, 14, 0, Math.PI * 2);
-      ctx.stroke();
-      // Arms
-      ctx.strokeRect(w * 0.14, h * 0.36, w * 0.12, h * 0.18);
-      ctx.strokeRect(w * 0.74, h * 0.36, w * 0.12, h * 0.18);
-      // Legs
-      ctx.strokeRect(w * 0.34, h * 0.62, w * 0.12, h * 0.18);
-      ctx.strokeRect(w * 0.54, h * 0.62, w * 0.12, h * 0.18);
-      ctx.setLineDash([]);
-    },
-  },
-  {
-    id: 'unicorn',
-    name: 'Sparkle Unicorn / Pegasus 🦄',
-    tagline: 'Draw magical wings, a glowing horn & rainbow mane!',
-    category: 'Fantasy',
-    emoji: '🦄',
-    color: '#ec4899',
-    badgeBg: 'bg-pink-500/20 text-pink-400 border-pink-500/40',
-    recommendedBehavior: 'HIGH SKY SOAR',
-    soundFx: 'fanfare',
-    description: 'Flies gracefully above the 3D world with magical trails!',
-    svgPath: (ctx, w, h) => {
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([8, 8]);
-      // Head
-      ctx.beginPath();
-      ctx.arc(w * 0.6, h * 0.2, w * 0.1, 0, Math.PI * 2);
-      ctx.stroke();
-      // Horn
-      ctx.beginPath();
-      ctx.moveTo(w * 0.62, h * 0.11);
-      ctx.lineTo(w * 0.7, h * 0.02);
-      ctx.lineTo(w * 0.56, h * 0.08);
-      ctx.closePath();
-      ctx.stroke();
-      // Neck & Body
-      ctx.beginPath();
-      ctx.ellipse(w * 0.45, h * 0.42, w * 0.22, h * 0.15, -0.1, 0, Math.PI * 2);
-      ctx.stroke();
-      // Wings
-      ctx.beginPath();
-      ctx.moveTo(w * 0.45, h * 0.3);
-      ctx.quadraticCurveTo(w * 0.35, h * 0.1, w * 0.2, h * 0.15);
-      ctx.quadraticCurveTo(w * 0.3, h * 0.28, w * 0.4, h * 0.35);
-      ctx.stroke();
-      // Legs
-      ctx.strokeRect(w * 0.3, h * 0.56, w * 0.06, h * 0.22);
-      ctx.strokeRect(w * 0.58, h * 0.56, w * 0.06, h * 0.22);
-      ctx.setLineDash([]);
-    },
-  },
-  {
-    id: 'cat',
-    name: 'Giggly Kitten / Pet 🐱',
-    tagline: 'Draw furry ears, fluffy tail & silly whiskers!',
-    category: 'Creatures',
-    emoji: '🐱',
-    color: '#f59e0b',
-    badgeBg: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
-    recommendedBehavior: 'GIGGLE WIGGLE',
-    soundFx: 'giggle',
-    description: 'Waddles and giggles whenever kids interact with it!',
-    svgPath: (ctx, w, h) => {
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([8, 8]);
-      // Big Head
-      ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.28, w * 0.2, 0, Math.PI * 2);
-      ctx.stroke();
-      // Ears
-      ctx.beginPath();
-      ctx.moveTo(w * 0.34, h * 0.18);
-      ctx.lineTo(w * 0.3, h * 0.06);
-      ctx.lineTo(w * 0.42, h * 0.12);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(w * 0.66, h * 0.18);
-      ctx.lineTo(w * 0.7, h * 0.06);
-      ctx.lineTo(w * 0.58, h * 0.12);
-      ctx.stroke();
-      // Body
-      ctx.beginPath();
-      ctx.ellipse(w * 0.5, h * 0.55, w * 0.16, h * 0.18, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      // Paws
-      ctx.strokeRect(w * 0.38, h * 0.7, w * 0.08, h * 0.08);
-      ctx.strokeRect(w * 0.54, h * 0.7, w * 0.08, h * 0.08);
-      // Tail
-      ctx.beginPath();
-      ctx.moveTo(w * 0.64, h * 0.58);
-      ctx.quadraticCurveTo(w * 0.85, h * 0.5, w * 0.82, h * 0.32);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    },
-  },
-  {
-    id: 'rocket',
-    name: 'Space Rocket Explorer 🚀',
-    tagline: 'Draw flame thrusters, round window & space commander!',
-    category: 'Space',
-    emoji: '🚀',
-    color: '#a855f7',
-    badgeBg: 'bg-purple-500/20 text-purple-400 border-purple-500/40',
-    recommendedBehavior: 'ROCKET BOOST LAUNCH',
-    soundFx: 'pop',
-    description: 'Shoots up into outer space with fire particle trails!',
-    svgPath: (ctx, w, h) => {
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([8, 8]);
-      // Rocket Body cone
-      ctx.beginPath();
-      ctx.moveTo(w * 0.5, h * 0.05);
-      ctx.quadraticCurveTo(w * 0.72, h * 0.28, w * 0.68, h * 0.6);
-      ctx.lineTo(w * 0.32, h * 0.6);
-      ctx.quadraticCurveTo(w * 0.28, h * 0.28, w * 0.5, h * 0.05);
-      ctx.stroke();
-      // Window
-      ctx.beginPath();
-      ctx.arc(w * 0.5, h * 0.3, w * 0.11, 0, Math.PI * 2);
-      ctx.stroke();
-      // Fins
-      ctx.beginPath();
-      ctx.moveTo(w * 0.3, h * 0.48);
-      ctx.lineTo(w * 0.14, h * 0.68);
-      ctx.lineTo(w * 0.32, h * 0.6);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(w * 0.7, h * 0.48);
-      ctx.lineTo(w * 0.86, h * 0.68);
-      ctx.lineTo(w * 0.68, h * 0.6);
-      ctx.stroke();
-      // Flames guide
-      ctx.beginPath();
-      ctx.moveTo(w * 0.38, h * 0.61);
-      ctx.lineTo(w * 0.42, h * 0.78);
-      ctx.lineTo(w * 0.5, h * 0.66);
-      ctx.lineTo(w * 0.58, h * 0.78);
-      ctx.lineTo(w * 0.62, h * 0.61);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    },
-  },
-  {
-    id: 'blank',
-    name: 'Blank Magic Photo Frame 🎨',
-    tagline: 'Draw ANYTHING! Includes corner targets for perfect photo scanner cutout.',
-    category: 'Blank',
-    emoji: '🎨',
-    color: '#eab308',
-    badgeBg: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
-    recommendedBehavior: 'CUSTOM 3D BEHAVIOR',
-    soundFx: 'boing',
-    description: 'Best for drawing custom superheroes, dragons, or pets on paper!',
-    svgPath: (ctx, w, h) => {
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(w * 0.1, h * 0.08, w * 0.8, h * 0.72);
-
-      // Corner targets
-      const corners = [
-        [w * 0.1, h * 0.08],
-        [w * 0.9, h * 0.08],
-        [w * 0.1, h * 0.8],
-        [w * 0.9, h * 0.8],
-      ];
-      corners.forEach(([cx, cy]) => {
-        ctx.fillStyle = '#f59e0b';
-        ctx.beginPath();
-        ctx.arc(cx, cy, 12, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // Guide text inside canvas
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 16px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('✏️ DRAW YOUR HERO INSIDE THIS BOX', w * 0.5, h * 0.44);
-    },
-  },
-];
+export type PaperTemplate = TemplateDefinition;
+export const PAPER_TEMPLATES = TEMPLATE_DEFINITIONS;
 
 export const PrintTemplatesModal: React.FC<PrintTemplatesModalProps> = ({
   isOpen,
@@ -317,7 +41,7 @@ export const PrintTemplatesModal: React.FC<PrintTemplatesModalProps> = ({
 
   if (!isOpen) return null;
 
-  const categories = ['All', 'Creatures', 'Robots', 'Fantasy', 'Space', 'Blank'];
+  const categories = ['All', 'Creatures', 'Robots', 'Fantasy', 'Space', 'Heroes', 'Blank'];
 
   const filteredTemplates = PAPER_TEMPLATES.filter(
     (t) => activeCategory === 'All' || t.category === activeCategory
@@ -378,7 +102,7 @@ export const PrintTemplatesModal: React.FC<PrintTemplatesModalProps> = ({
     // Render Template Guidelines
     ctx.save();
     ctx.translate(60, 270);
-    template.svgPath(ctx, 1080, 950);
+    template.drawGuidelines(ctx, 1080, 950);
     ctx.restore();
 
     // Footer Info & Kid Name Input Box
@@ -393,7 +117,7 @@ export const PrintTemplatesModal: React.FC<PrintTemplatesModalProps> = ({
     ctx.font = 'bold 24px sans-serif';
     ctx.fillText('1. COLOR & DRAW YOUR HERO HERE 🖍️', 90, 1290);
     ctx.fillText('2. TAKE A PHOTO WITH YOUR PHONE 📷', 90, 1340);
-    ctx.fillText('3. UPLOAD AT 3DPAPER.WORLD TO WATCH IT DANCE! 🚀', 90, 1390);
+    ctx.fillText('3. UPLOAD TO WATCH IT COME ALIVE IN 3D! 🚀', 90, 1390);
 
     // Character Name Box
     ctx.strokeStyle = '#94a3b8';
@@ -589,7 +313,7 @@ export const PrintTemplatesModal: React.FC<PrintTemplatesModalProps> = ({
                         const ctx = node.getContext('2d');
                         if (ctx) {
                           ctx.clearRect(0, 0, 300, 180);
-                          selectedTemplate.svgPath(ctx, 300, 180);
+                          selectedTemplate.drawGuidelines(ctx, 300, 180);
                         }
                       }
                     }}

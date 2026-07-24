@@ -31,6 +31,7 @@ import { HelpModal } from './components/HelpModal';
 import { DrawHeroModal } from './components/DrawHeroModal';
 import { UploadPaperModal } from './components/UploadPaperModal';
 import { PrintTemplatesModal } from './components/PrintTemplatesModal';
+import { ArCameraModal } from './components/ArCameraModal';
 import { PlaygroundControls } from './components/PlaygroundControls';
 import { Sliders, Palette, Trees, Music, Sparkles, Gamepad2, Film, Box } from 'lucide-react';
 import { playBoingSound, playGiggleSound, playPopSound } from './utils/soundEffects';
@@ -69,8 +70,8 @@ export default function App() {
   );
   const [showOnionSkin, setShowOnionSkin] = useState(false);
 
-  // Active Studio Sidebar Tab
-  const [activeTab, setActiveTab] = useState<'pose' | 'character' | 'stage' | 'audio'>('stage');
+  // Active Studio Sidebar Tab: 3D Models or 3D Stage
+  const [activeTab, setActiveTab] = useState<'character' | 'stage'>('character');
 
   // Modals
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
@@ -78,6 +79,7 @@ export default function App() {
   const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isArModalOpen, setIsArModalOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [drawingTemplateId, setDrawingTemplateId] = useState<string>('blank');
 
@@ -86,6 +88,16 @@ export default function App() {
     setCreatures((prev) => [...prev, creature]);
     setActiveCreatureId(creature.id);
     playGiggleSound();
+
+    // Instantly bring drawing to life as main 3D character!
+    if (creature.drawingDataUrl) {
+      setCharacter((prev) => ({
+        ...prev,
+        type: (creature.templateId as any) || 'doodle',
+        name: creature.name,
+        drawingDataUrl: creature.drawingDataUrl,
+      }));
+    }
   };
 
   const handleUpdateBehavior = (id: string, behavior: WorldCreature['behavior']) => {
@@ -196,6 +208,14 @@ export default function App() {
     };
     setCreatures((prev) => [...prev, newCreature]);
     setActiveCreatureId(newCreature.id);
+
+    // Instantly bring drawing to life as main 3D character!
+    setCharacter((prev) => ({
+      ...prev,
+      type: (tid as any) || 'doodle',
+      name: heroName,
+      drawingDataUrl,
+    }));
   };
 
   // Animation Frame Loop Ref
@@ -413,163 +433,72 @@ export default function App() {
       <Header
         projectTitle={projectTitle}
         onUpdateTitle={setProjectTitle}
-        onOpenAIModal={() => setIsAIModalOpen(true)}
-        onOpenExportModal={() => setIsExportModalOpen(true)}
         onOpenDrawModal={() => {
           setDrawingTemplateId('blank');
           setIsDrawModalOpen(true);
         }}
         onOpenUploadModal={() => setIsUploadModalOpen(true)}
         onOpenPrintModal={() => setIsPrintModalOpen(true)}
-        onLoadPresetClip={handleLoadPresetClip}
-        onResetProject={() => handleLoadPresetClip(PRESET_CLIPS[0])}
+        onOpenArModal={() => setIsArModalOpen(true)}
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      {/* Mobile Top Navigation Switcher (< md) */}
-      <div className="md:hidden flex items-center justify-around bg-slate-900/90 border-b border-slate-800 p-1.5 px-2 gap-1 shrink-0 z-30 shadow-md">
-        <button
-          onClick={() => {
-            playBoingSound();
-            setMobileTab('3d');
-          }}
-          className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-black transition-all ${
-            mobileTab === '3d'
-              ? 'bg-amber-500 text-slate-950 shadow-md scale-105'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Box className="w-3.5 h-3.5" /> 3D World
-        </button>
-
-        <button
-          onClick={() => {
-            playBoingSound();
-            setMobileTab('playground');
-          }}
-          className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-black transition-all ${
-            mobileTab === 'playground'
-              ? 'bg-purple-600 text-white shadow-md scale-105'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Gamepad2 className="w-3.5 h-3.5" /> Playground
-        </button>
-
-        <button
-          onClick={() => {
-            playBoingSound();
-            setMobileTab('studio');
-          }}
-          className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-black transition-all ${
-            mobileTab === 'studio'
-              ? 'bg-indigo-600 text-white shadow-md scale-105'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Sliders className="w-3.5 h-3.5" /> Studio
-        </button>
-
-        <button
-          onClick={() => {
-            playBoingSound();
-            setMobileTab('timeline');
-          }}
-          className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-black transition-all ${
-            mobileTab === 'timeline'
-              ? 'bg-emerald-600 text-white shadow-md scale-105'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Film className="w-3.5 h-3.5" /> Timeline
-        </button>
-      </div>
-
-      {/* Main Desktop Workspace Grid (>= md) */}
-      <div className="hidden md:grid flex-1 grid-cols-12 gap-3 p-3 overflow-hidden relative min-h-0">
-        {/* Left Side Studio Panel */}
-        <div className="col-span-4 xl:col-span-3 flex flex-col gap-2 h-full overflow-hidden">
-          {/* Tab Selection Bar */}
-          <div className="flex items-center gap-1 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 shadow-md">
+      {/* Main Streamlined Workspace */}
+      <div className="flex-1 grid grid-cols-12 gap-3 p-3 overflow-hidden relative min-h-0">
+        {/* Left Side Studio Panel (3D Models & 3D Environments) */}
+        <div className="col-span-12 md:col-span-4 xl:col-span-3 flex flex-col gap-2 h-full overflow-hidden">
+          {/* Tab Switcher: 3D Models vs 3D Environments */}
+          <div className="flex items-center gap-1 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 shadow-md shrink-0">
             <button
-              onClick={() => setActiveTab('pose')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'pose'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" /> Pose
-            </button>
-
-            <button
-              onClick={() => setActiveTab('character')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              onClick={() => {
+                playBoingSound();
+                setActiveTab('character');
+              }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all ${
                 activeTab === 'character'
-                  ? 'bg-purple-600 text-white shadow-md'
+                  ? 'bg-purple-600 text-white shadow-md scale-102'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Palette className="w-3.5 h-3.5" /> Hero
+              <Palette className="w-4 h-4 text-purple-300" />
+              <span>🦖 3D Models</span>
             </button>
 
             <button
-              onClick={() => setActiveTab('stage')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              onClick={() => {
+                playBoingSound();
+                setActiveTab('stage');
+              }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all ${
                 activeTab === 'stage'
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-emerald-600 text-white shadow-md scale-102'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Trees className="w-3.5 h-3.5" /> Stage
-            </button>
-
-            <button
-              onClick={() => setActiveTab('audio')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'audio'
-                  ? 'bg-pink-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Music className="w-3.5 h-3.5" /> Audio
+              <Trees className="w-4 h-4 text-emerald-300" />
+              <span>🌲 3D Stages</span>
             </button>
           </div>
 
-          {/* Active Tab Panel */}
-          <div className="flex-1 overflow-hidden">
-            {activeTab === 'pose' && (
-              <PosingControls
-                currentPose={currentPose}
-                selectedBone={selectedBone}
-                onSelectBone={setSelectedBone}
-                onUpdateBoneTransform={handleUpdateBoneTransform}
-                onApplyPresetPose={handleApplyPresetPose}
-                onResetPose={handleResetPose}
-              />
-            )}
-
-            {activeTab === 'character' && (
+          {/* Active Tab Panel Body */}
+          <div className="flex-1 overflow-hidden bg-slate-900/80 rounded-2xl border border-slate-800 p-2 shadow-inner">
+            {activeTab === 'character' ? (
               <CharacterSelector
                 character={character}
                 onUpdateCharacter={setCharacter}
                 onOpenDrawModal={() => setIsDrawModalOpen(true)}
               />
-            )}
-
-            {activeTab === 'stage' && (
+            ) : (
               <EnvironmentStudio
                 environment={environment}
                 onUpdateEnvironment={setEnvironment}
               />
             )}
-
-            {activeTab === 'audio' && <AudioPanel />}
           </div>
         </div>
 
-        {/* Center 3D Viewport Area */}
-        <div className="col-span-8 xl:col-span-9 h-full flex flex-col overflow-hidden relative">
+        {/* Center Main 3D Viewport Canvas */}
+        <div className="col-span-12 md:col-span-8 xl:col-span-9 h-full flex flex-col overflow-hidden relative rounded-2xl border border-slate-800 bg-slate-900/50 shadow-2xl">
           <ThreeCanvas
             character={character}
             environment={environment}
@@ -584,7 +513,7 @@ export default function App() {
             onCreatureClick={handleCreatureClick}
           />
 
-          {/* Living Playground Floating Controls Overlay */}
+          {/* Playground Floating Action Controls */}
           <PlaygroundControls
             creatures={creatures}
             activeCreatureId={activeCreatureId}
@@ -604,229 +533,6 @@ export default function App() {
             onOpenPrintModal={() => setIsPrintModalOpen(true)}
           />
         </div>
-      </div>
-
-      {/* Main Mobile View Container (< md) */}
-      <div className="md:hidden flex-1 overflow-hidden flex flex-col p-2 relative min-h-0">
-        {mobileTab === '3d' && (
-          <div className="h-full w-full flex flex-col overflow-hidden relative rounded-2xl border border-slate-800">
-            <ThreeCanvas
-              character={character}
-              environment={environment}
-              currentPose={currentPose}
-              ghostPose={getGhostPose()}
-              selectedBone={selectedBone}
-              onSelectBone={setSelectedBone}
-              isPlaying={isPlaying}
-              creatures={creatures}
-              toys={toys}
-              onGroundClick={handleGroundClick}
-              onCreatureClick={handleCreatureClick}
-            />
-
-            {/* Living Playground Floating Controls Overlay */}
-            <PlaygroundControls
-              creatures={creatures}
-              activeCreatureId={activeCreatureId}
-              toys={toys}
-              onSelectActiveCreature={setActiveCreatureId}
-              onUpdateCreatureBehavior={handleUpdateBehavior}
-              onRemoveCreature={handleDeleteCreature}
-              onMoveCreature={handleMoveCreature}
-              onJumpCreature={handleJumpCreature}
-              onAddToy={handleAddToy}
-              onRemoveToy={handleRemoveToy}
-              onOpenUploadModal={() => setIsUploadModalOpen(true)}
-              onOpenDrawModal={() => {
-                setDrawingTemplateId('blank');
-                setIsDrawModalOpen(true);
-              }}
-              onOpenPrintModal={() => setIsPrintModalOpen(true)}
-            />
-          </div>
-        )}
-
-        {mobileTab === 'playground' && (
-          <div className="h-full w-full overflow-hidden">
-            <PlaygroundControls
-              creatures={creatures}
-              activeCreatureId={activeCreatureId}
-              toys={toys}
-              onSelectActiveCreature={setActiveCreatureId}
-              onUpdateCreatureBehavior={handleUpdateBehavior}
-              onRemoveCreature={handleDeleteCreature}
-              onMoveCreature={handleMoveCreature}
-              onJumpCreature={handleJumpCreature}
-              onAddToy={handleAddToy}
-              onRemoveToy={handleRemoveToy}
-              onOpenUploadModal={() => setIsUploadModalOpen(true)}
-              onOpenDrawModal={() => {
-                setDrawingTemplateId('blank');
-                setIsDrawModalOpen(true);
-              }}
-              onOpenPrintModal={() => setIsPrintModalOpen(true)}
-            />
-          </div>
-        )}
-
-        {mobileTab === 'studio' && (
-          <div className="h-full w-full flex flex-col gap-2 overflow-hidden">
-            <div className="flex items-center gap-1 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 shadow-md shrink-0">
-              <button
-                onClick={() => setActiveTab('pose')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                  activeTab === 'pose'
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Sliders className="w-3.5 h-3.5" /> Pose
-              </button>
-
-              <button
-                onClick={() => setActiveTab('character')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                  activeTab === 'character'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Palette className="w-3.5 h-3.5" /> Hero
-              </button>
-
-              <button
-                onClick={() => setActiveTab('stage')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                  activeTab === 'stage'
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Trees className="w-3.5 h-3.5" /> Stage
-              </button>
-
-              <button
-                onClick={() => setActiveTab('audio')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                  activeTab === 'audio'
-                    ? 'bg-pink-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Music className="w-3.5 h-3.5" /> Audio
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-hidden">
-              {activeTab === 'pose' && (
-                <PosingControls
-                  currentPose={currentPose}
-                  selectedBone={selectedBone}
-                  onSelectBone={setSelectedBone}
-                  onUpdateBoneTransform={handleUpdateBoneTransform}
-                  onApplyPresetPose={handleApplyPresetPose}
-                  onResetPose={handleResetPose}
-                />
-              )}
-
-              {activeTab === 'character' && (
-                <CharacterSelector
-                  character={character}
-                  onUpdateCharacter={setCharacter}
-                  onOpenDrawModal={() => setIsDrawModalOpen(true)}
-                />
-              )}
-
-              {activeTab === 'stage' && (
-                <EnvironmentStudio
-                  environment={environment}
-                  onUpdateEnvironment={setEnvironment}
-                />
-              )}
-
-              {activeTab === 'audio' && <AudioPanel />}
-            </div>
-          </div>
-        )}
-
-        {mobileTab === 'timeline' && (
-          <div className="h-full w-full overflow-y-auto">
-            <Timeline
-              keyframes={keyframes}
-              currentTime={currentTime}
-              duration={duration}
-              isPlaying={isPlaying}
-              loop={loop}
-              fps={fps}
-              speed={speed}
-              showOnionSkin={showOnionSkin}
-              selectedKeyframeId={selectedKeyframeId}
-              onSeek={(t) => {
-                setIsPlaying(false);
-                setCurrentTime(t);
-              }}
-              onTogglePlay={() => setIsPlaying(!isPlaying)}
-              onStop={() => {
-                setIsPlaying(false);
-                setCurrentTime(0);
-              }}
-              onToggleLoop={() => setLoop(!loop)}
-              onToggleOnionSkin={() => setShowOnionSkin(!showOnionSkin)}
-              onChangeSpeed={setSpeed}
-              onChangeFps={setFps}
-              onAddKeyframe={handleAddKeyframe}
-              onDeleteKeyframe={handleDeleteKeyframe}
-              onSelectKeyframe={(id) => {
-                setSelectedKeyframeId(id);
-                const kf = keyframes.find((k) => k.id === id);
-                if (kf) {
-                  setCurrentTime(kf.time);
-                  setCurrentPose(kf.pose);
-                }
-              }}
-              onCopyKeyframe={handleCopyKeyframe}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Keyframe Timeline Panel (Desktop >= md) */}
-      <div className="hidden md:block">
-        <Timeline
-          keyframes={keyframes}
-          currentTime={currentTime}
-          duration={duration}
-          isPlaying={isPlaying}
-          loop={loop}
-          fps={fps}
-          speed={speed}
-          showOnionSkin={showOnionSkin}
-          selectedKeyframeId={selectedKeyframeId}
-          onSeek={(t) => {
-            setIsPlaying(false);
-            setCurrentTime(t);
-          }}
-          onTogglePlay={() => setIsPlaying(!isPlaying)}
-          onStop={() => {
-            setIsPlaying(false);
-            setCurrentTime(0);
-          }}
-          onToggleLoop={() => setLoop(!loop)}
-          onToggleOnionSkin={() => setShowOnionSkin(!showOnionSkin)}
-          onChangeSpeed={setSpeed}
-          onChangeFps={setFps}
-          onAddKeyframe={handleAddKeyframe}
-          onDeleteKeyframe={handleDeleteKeyframe}
-          onSelectKeyframe={(id) => {
-            setSelectedKeyframeId(id);
-            const kf = keyframes.find((k) => k.id === id);
-            if (kf) {
-              setCurrentTime(kf.time);
-              setCurrentPose(kf.pose);
-            }
-          }}
-          onCopyKeyframe={handleCopyKeyframe}
-        />
       </div>
 
       {/* Modals */}
@@ -865,6 +571,11 @@ export default function App() {
         onClose={() => setIsDrawModalOpen(false)}
         onSaveDrawing={handleSaveDrawing}
         initialTemplateId={drawingTemplateId}
+      />
+
+      <ArCameraModal
+        isOpen={isArModalOpen}
+        onClose={() => setIsArModalOpen(false)}
       />
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />

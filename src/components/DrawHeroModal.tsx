@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { playFanfareSound, playPopSound, playBoingSound } from '../utils/soundEffects';
+import { TEMPLATE_DEFINITIONS } from '../utils/templateDrawings';
 
 interface DrawHeroModalProps {
   isOpen: boolean;
@@ -54,16 +55,10 @@ const STICKERS = [
   { emoji: '🎀', label: 'Bow' },
 ];
 
-const TEMPLATES = [
-  { id: 'blank', label: 'Blank Canvas 🎨' },
-  { id: 'dino', label: 'Dino 🦖' },
-  { id: 'robot', label: 'Robot 🤖' },
-  { id: 'unicorn', label: 'Unicorn 🦄' },
-  { id: 'cat', label: 'Kitten 🐱' },
-  { id: 'rocket', label: 'Rocket 🚀' },
-  { id: 'monster', label: 'Monster 👾' },
-  { id: 'hero', label: 'Hero 🦸' },
-];
+const TEMPLATES = TEMPLATE_DEFINITIONS.map((t) => ({
+  id: t.id,
+  label: `${t.name.split(' ')[0]} ${t.emoji}`,
+}));
 
 export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
   isOpen,
@@ -80,6 +75,8 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
   const [heroName, setHeroName] = useState('My Doodle Hero');
   const [activeStamp, setActiveStamp] = useState<string | null>(null);
   const [currentTemplate, setCurrentTemplate] = useState<string>(initialTemplateId || 'blank');
+  const [history, setHistory] = useState<ImageData[]>([]);
+  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
 
   // Initialize Canvas
   useEffect(() => {
@@ -93,105 +90,51 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
 
   if (!isOpen) return null;
 
+  const saveHistoryState = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    setHistory((prev) => [...prev.slice(-15), imgData]);
+  };
+
+  const handleUndo = () => {
+    if (history.length === 0) return;
+    playPopSound();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    const previousState = history[history.length - 1];
+    setHistory((prev) => prev.slice(0, prev.length - 1));
+    ctx.putImageData(previousState, 0, 0);
+  };
+
   const clearAndDrawTemplate = (templateId: string) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
+
+    setHistory([]);
 
     // Fill white background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = '#cbd5e1';
-    ctx.lineWidth = 4;
-    ctx.setLineDash([8, 8]);
-
-    if (templateId === 'dino') {
-      ctx.beginPath();
-      ctx.arc(220, 150, 50, 0, Math.PI * 2);
-      ctx.strokeRect(220, 120, 90, 40);
-      ctx.ellipse(230, 270, 90, 80, 0, 0, Math.PI * 2);
-      ctx.strokeRect(180, 340, 35, 90);
-      ctx.strokeRect(245, 340, 35, 90);
-      ctx.stroke();
-    } else if (templateId === 'unicorn') {
-      ctx.beginPath();
-      ctx.arc(300, 140, 50, 0, Math.PI * 2);
-      ctx.moveTo(310, 90);
-      ctx.lineTo(350, 20);
-      ctx.lineTo(280, 70);
-      ctx.ellipse(220, 260, 110, 70, -0.1, 0, Math.PI * 2);
-      ctx.strokeRect(150, 320, 30, 110);
-      ctx.strokeRect(280, 320, 30, 110);
-      ctx.stroke();
-    } else if (templateId === 'cat') {
-      ctx.beginPath();
-      ctx.arc(256, 170, 90, 0, Math.PI * 2);
-      ctx.moveTo(180, 110); ctx.lineTo(160, 40); ctx.lineTo(210, 90);
-      ctx.moveTo(332, 110); ctx.lineTo(352, 40); ctx.lineTo(302, 90);
-      ctx.ellipse(256, 310, 80, 90, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (templateId === 'rocket') {
-      ctx.beginPath();
-      ctx.moveTo(256, 50);
-      ctx.quadraticCurveTo(360, 180, 340, 360);
-      ctx.lineTo(172, 360);
-      ctx.quadraticCurveTo(152, 180, 256, 50);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(256, 210, 50, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (templateId === 'monster') {
-      // Body blob
-      ctx.beginPath();
-      ctx.ellipse(256, 280, 140, 160, 0, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Eyes guide
-      ctx.beginPath();
-      ctx.arc(200, 200, 30, 0, Math.PI * 2);
-      ctx.arc(312, 200, 30, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Smile guide
-      ctx.beginPath();
-      ctx.arc(256, 270, 60, 0.2, Math.PI - 0.2);
-      ctx.stroke();
-    } else if (templateId === 'robot') {
-      // Square Head
-      ctx.strokeRect(176, 80, 160, 140);
-      // Torso
-      ctx.strokeRect(156, 240, 200, 180);
-      // Antenna
-      ctx.beginPath();
-      ctx.moveTo(256, 80);
-      ctx.lineTo(256, 40);
-      ctx.arc(256, 30, 10, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (templateId === 'hero') {
-      // Cape + Hero Shield Body
-      ctx.beginPath();
-      ctx.arc(256, 160, 80, 0, Math.PI * 2); // Head
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(176, 240);
-      ctx.lineTo(336, 240);
-      ctx.lineTo(316, 420);
-      ctx.lineTo(256, 460);
-      ctx.lineTo(196, 420);
-      ctx.closePath();
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
+    const def = TEMPLATE_DEFINITIONS.find((t) => t.id === templateId) || TEMPLATE_DEFINITIONS[0];
+    def.drawGuidelines(ctx, canvas.width, canvas.height);
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
+
+    saveHistoryState();
 
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -200,7 +143,6 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
     const y = (clientY - rect.top) * (canvas.height / rect.height);
 
     if (activeStamp) {
-      // Stamp emoji
       playPopSound();
       ctx.font = '64px sans-serif';
       ctx.textAlign = 'center';
@@ -211,15 +153,18 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
     }
 
     setIsDrawing(true);
+    lastPosRef.current = { x, y };
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+    ctx.fillStyle = isEraser ? '#ffffff' : color;
+    ctx.fill();
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || activeStamp) return;
+    if (!isDrawing || activeStamp || !lastPosRef.current) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
@@ -236,17 +181,24 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
       ctx.strokeStyle = '#ffffff';
     } else if (rainbowMode) {
       const hue = (Date.now() / 5) % 360;
-      ctx.strokeStyle = `hsl(${hue}, 90%, 55%)`;
+      ctx.strokeStyle = `hsl(${hue}, 95%, 55%)`;
     } else {
       ctx.strokeStyle = color;
     }
 
-    ctx.lineTo(x, y);
+    ctx.beginPath();
+    ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y);
+    const midX = (lastPosRef.current.x + x) / 2;
+    const midY = (lastPosRef.current.y + y) / 2;
+    ctx.quadraticCurveTo(lastPosRef.current.x, lastPosRef.current.y, midX, midY);
     ctx.stroke();
+
+    lastPosRef.current = { x, y };
   };
 
   const stopDrawing = () => {
     setIsDrawing(false);
+    lastPosRef.current = null;
   };
 
   const handleFinishDrawing = () => {
@@ -415,8 +367,21 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
               </div>
             </div>
 
-            {/* Eraser & Clear */}
+            {/* Eraser, Undo & Clear */}
             <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={handleUndo}
+                disabled={history.length === 0}
+                className={`p-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  history.length > 0
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400 shadow-md cursor-pointer'
+                    : 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed'
+                }`}
+                title="Undo last stroke"
+              >
+                <RotateCcw className="w-4 h-4" /> Undo
+              </button>
+
               <button
                 onClick={() => {
                   setIsEraser(!isEraser);
@@ -439,7 +404,7 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
                 className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-bold flex items-center justify-center gap-1"
                 title="Clear Canvas"
               >
-                <RotateCcw className="w-4 h-4" /> Clear
+                <RotateCcw className="w-4 h-4" /> Clear All
               </button>
             </div>
           </div>

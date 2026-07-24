@@ -1493,14 +1493,18 @@ function createVolumetric3DPartGeometry(
     const y = posAttr.getY(i);
     const z = posAttr.getZ(i);
 
-    let normX = (x - minX) / rangeX;
-    let normY = (y - minY) / rangeY;
+    const normX = (x - minX) / rangeX;
+    const normY = (y - minY) / rangeY;
 
-    if (z < -0.01) {
-      normX = 1 - normX;
-    }
+    // Smooth cylindrical wrapping to eliminate sharp seams
+    const angle = Math.atan2(z, x - (minX + maxX) / 2);
+    const wrapX = 0.5 + Math.sin(angle) * 0.5;
 
-    const u = uMin + (uMax - uMin) * Math.max(0, Math.min(1, normX));
+    // Weight towards front face for maximum drawing legibility
+    const frontFactor = z >= 0 ? 1 : Math.max(0, 1 + z * 2);
+    const finalNormX = normX * frontFactor + wrapX * (1 - frontFactor);
+
+    const u = uMin + (uMax - uMin) * Math.max(0, Math.min(1, finalNormX));
     const v = vMin + (vMax - vMin) * Math.max(0, Math.min(1, normY));
 
     uvAttr.setXY(i, u, v);
@@ -1566,11 +1570,11 @@ function getTemplateRigConfig(templateId: string): TemplateRigConfig {
     return {
       body: { shape: 'capsule', w: 0.75, h: 0.7, d: 1.35, uMin: 0.20, vMin: 0.30, uMax: 0.75, vMax: 0.65, posX: 0, posY: 0, posZ: 0 },
       head: { shape: 'capsule', w: 0.65, h: 0.8, d: 0.85, uMin: 0.45, vMin: 0.65, uMax: 0.92, vMax: 0.98, posX: 0, posY: 0.5, posZ: 0.45 },
-      leftArm: { shape: 'cylinder', w: 0.28, h: 0.7, d: 0.28, uMin: 0.05, vMin: 0.55, uMax: 0.45, vMax: 0.90, posX: -0.3, posY: -0.35, posZ: 0.4 },
-      rightArm: { shape: 'cylinder', w: 0.28, h: 0.7, d: 0.28, uMin: 0.05, vMin: 0.55, uMax: 0.45, vMax: 0.90, posX: 0.3, posY: -0.35, posZ: 0.4 },
-      leftLeg: { shape: 'cylinder', w: 0.28, h: 0.7, d: 0.28, uMin: 0.20, vMin: 0.0, uMax: 0.45, vMax: 0.30, posX: -0.3, posY: -0.35, posZ: -0.4 },
-      rightLeg: { shape: 'cylinder', w: 0.28, h: 0.7, d: 0.28, uMin: 0.55, vMin: 0.0, uMax: 0.80, vMax: 0.30, posX: 0.3, posY: -0.35, posZ: -0.4 },
-      tail: { shape: 'capsule', w: 0.35, h: 0.7, d: 0.35, uMin: 0.0, vMin: 0.25, uMax: 0.25, vMax: 0.60, posX: 0, posY: 0.1, posZ: -0.7, offsetX: 0, offsetY: 0 },
+      leftArm: { shape: 'cylinder', w: 0.28, h: 0.7, d: 0.28, uMin: 0.02, vMin: 0.35, uMax: 0.22, vMax: 0.68, posX: -0.45, posY: 0.2, posZ: 0 },
+      rightArm: { shape: 'cylinder', w: 0.28, h: 0.7, d: 0.28, uMin: 0.78, vMin: 0.35, uMax: 0.98, vMax: 0.68, posX: 0.45, posY: 0.2, posZ: 0 },
+      leftLeg: { shape: 'cylinder', w: 0.28, h: 0.7, d: 0.28, uMin: 0.20, vMin: 0.02, uMax: 0.48, vMax: 0.35, posX: -0.3, posY: -0.35, posZ: 0.3 },
+      rightLeg: { shape: 'cylinder', w: 0.28, h: 0.7, d: 0.28, uMin: 0.52, vMin: 0.02, uMax: 0.80, vMax: 0.35, posX: 0.3, posY: -0.35, posZ: 0.3 },
+      tail: { shape: 'capsule', w: 0.35, h: 0.7, d: 0.35, uMin: 0.02, vMin: 0.02, uMax: 0.22, vMax: 0.35, posX: 0, posY: 0.1, posZ: -0.7, offsetX: 0, offsetY: 0 },
     };
   }
 
@@ -1578,11 +1582,11 @@ function getTemplateRigConfig(templateId: string): TemplateRigConfig {
     return {
       body: { shape: 'sphere', w: 0.85, h: 0.75, d: 1.1, uMin: 0.25, vMin: 0.22, uMax: 0.75, vMax: 0.58, posX: 0, posY: 0, posZ: 0 },
       head: { shape: 'sphere', w: 0.95, h: 0.85, d: 0.85, uMin: 0.22, vMin: 0.58, uMax: 0.78, vMax: 0.98, posX: 0, posY: 0.4, posZ: 0 },
-      leftArm: { shape: 'capsule', w: 0.28, h: 0.5, d: 0.28, uMin: 0.25, vMin: 0.0, uMax: 0.45, vMax: 0.25, posX: -0.3, posY: -0.3, posZ: 0.3 },
-      rightArm: { shape: 'capsule', w: 0.28, h: 0.5, d: 0.28, uMin: 0.55, vMin: 0.0, uMax: 0.75, vMax: 0.25, posX: 0.3, posY: -0.3, posZ: 0.3 },
-      leftLeg: { shape: 'capsule', w: 0.28, h: 0.5, d: 0.28, uMin: 0.25, vMin: 0.0, uMax: 0.45, vMax: 0.25, posX: -0.32, posY: -0.3, posZ: -0.3 },
-      rightLeg: { shape: 'capsule', w: 0.28, h: 0.5, d: 0.28, uMin: 0.55, vMin: 0.0, uMax: 0.75, vMax: 0.25, posX: 0.32, posY: -0.3, posZ: -0.3 },
-      tail: { shape: 'capsule', w: 0.22, h: 0.8, d: 0.22, uMin: 0.68, vMin: 0.30, uMax: 0.95, vMax: 0.65, posX: 0, posY: 0.1, posZ: -0.6, offsetX: 0, offsetY: 0 },
+      leftArm: { shape: 'capsule', w: 0.28, h: 0.5, d: 0.28, uMin: 0.02, vMin: 0.35, uMax: 0.22, vMax: 0.65, posX: -0.38, posY: 0.1, posZ: 0.2 },
+      rightArm: { shape: 'capsule', w: 0.28, h: 0.5, d: 0.28, uMin: 0.78, vMin: 0.35, uMax: 0.98, vMax: 0.65, posX: 0.38, posY: 0.1, posZ: 0.2 },
+      leftLeg: { shape: 'capsule', w: 0.28, h: 0.5, d: 0.28, uMin: 0.22, vMin: 0.02, uMax: 0.48, vMax: 0.35, posX: -0.32, posY: -0.3, posZ: -0.3 },
+      rightLeg: { shape: 'capsule', w: 0.28, h: 0.5, d: 0.28, uMin: 0.52, vMin: 0.02, uMax: 0.78, vMax: 0.35, posX: 0.32, posY: -0.3, posZ: -0.3 },
+      tail: { shape: 'capsule', w: 0.22, h: 0.8, d: 0.22, uMin: 0.78, vMin: 0.02, uMax: 0.98, vMax: 0.35, posX: 0, posY: 0.1, posZ: -0.6, offsetX: 0, offsetY: 0 },
     };
   }
 
