@@ -19,7 +19,8 @@ import { playFanfareSound, playPopSound, playBoingSound } from '../utils/soundEf
 interface DrawHeroModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveDrawing: (drawingDataUrl: string, heroName: string) => void;
+  onSaveDrawing: (drawingDataUrl: string, heroName: string, templateId?: string) => void;
+  initialTemplateId?: string;
 }
 
 const BRUSH_SIZES = [
@@ -55,8 +56,12 @@ const STICKERS = [
 
 const TEMPLATES = [
   { id: 'blank', label: 'Blank Canvas 🎨' },
-  { id: 'monster', label: 'Monster 👾' },
+  { id: 'dino', label: 'Dino 🦖' },
   { id: 'robot', label: 'Robot 🤖' },
+  { id: 'unicorn', label: 'Unicorn 🦄' },
+  { id: 'cat', label: 'Kitten 🐱' },
+  { id: 'rocket', label: 'Rocket 🚀' },
+  { id: 'monster', label: 'Monster 👾' },
   { id: 'hero', label: 'Hero 🦸' },
 ];
 
@@ -64,6 +69,7 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
   isOpen,
   onClose,
   onSaveDrawing,
+  initialTemplateId,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -73,14 +79,17 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
   const [rainbowMode, setRainbowMode] = useState(false);
   const [heroName, setHeroName] = useState('My Doodle Hero');
   const [activeStamp, setActiveStamp] = useState<string | null>(null);
+  const [currentTemplate, setCurrentTemplate] = useState<string>(initialTemplateId || 'blank');
 
   // Initialize Canvas
   useEffect(() => {
     if (!isOpen) return;
+    const targetTemplate = initialTemplateId || 'blank';
+    setCurrentTemplate(targetTemplate);
     setTimeout(() => {
-      clearAndDrawTemplate('blank');
+      clearAndDrawTemplate(targetTemplate);
     }, 50);
-  }, [isOpen]);
+  }, [isOpen, initialTemplateId]);
 
   if (!isOpen) return null;
 
@@ -94,12 +103,46 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (templateId === 'monster') {
-      // Draw friendly monster outline
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 4;
-      ctx.setLineDash([8, 8]);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 4;
+    ctx.setLineDash([8, 8]);
 
+    if (templateId === 'dino') {
+      ctx.beginPath();
+      ctx.arc(220, 150, 50, 0, Math.PI * 2);
+      ctx.strokeRect(220, 120, 90, 40);
+      ctx.ellipse(230, 270, 90, 80, 0, 0, Math.PI * 2);
+      ctx.strokeRect(180, 340, 35, 90);
+      ctx.strokeRect(245, 340, 35, 90);
+      ctx.stroke();
+    } else if (templateId === 'unicorn') {
+      ctx.beginPath();
+      ctx.arc(300, 140, 50, 0, Math.PI * 2);
+      ctx.moveTo(310, 90);
+      ctx.lineTo(350, 20);
+      ctx.lineTo(280, 70);
+      ctx.ellipse(220, 260, 110, 70, -0.1, 0, Math.PI * 2);
+      ctx.strokeRect(150, 320, 30, 110);
+      ctx.strokeRect(280, 320, 30, 110);
+      ctx.stroke();
+    } else if (templateId === 'cat') {
+      ctx.beginPath();
+      ctx.arc(256, 170, 90, 0, Math.PI * 2);
+      ctx.moveTo(180, 110); ctx.lineTo(160, 40); ctx.lineTo(210, 90);
+      ctx.moveTo(332, 110); ctx.lineTo(352, 40); ctx.lineTo(302, 90);
+      ctx.ellipse(256, 310, 80, 90, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (templateId === 'rocket') {
+      ctx.beginPath();
+      ctx.moveTo(256, 50);
+      ctx.quadraticCurveTo(360, 180, 340, 360);
+      ctx.lineTo(172, 360);
+      ctx.quadraticCurveTo(152, 180, 256, 50);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(256, 210, 50, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (templateId === 'monster') {
       // Body blob
       ctx.beginPath();
       ctx.ellipse(256, 280, 140, 160, 0, 0, Math.PI * 2);
@@ -115,13 +158,7 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
       ctx.beginPath();
       ctx.arc(256, 270, 60, 0.2, Math.PI - 0.2);
       ctx.stroke();
-
-      ctx.setLineDash([]);
     } else if (templateId === 'robot') {
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 4;
-      ctx.setLineDash([8, 8]);
-
       // Square Head
       ctx.strokeRect(176, 80, 160, 140);
       // Torso
@@ -132,13 +169,7 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
       ctx.lineTo(256, 40);
       ctx.arc(256, 30, 10, 0, Math.PI * 2);
       ctx.stroke();
-
-      ctx.setLineDash([]);
     } else if (templateId === 'hero') {
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 4;
-      ctx.setLineDash([8, 8]);
-
       // Cape + Hero Shield Body
       ctx.beginPath();
       ctx.arc(256, 160, 80, 0, Math.PI * 2); // Head
@@ -152,9 +183,8 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
       ctx.lineTo(196, 420);
       ctx.closePath();
       ctx.stroke();
-
-      ctx.setLineDash([]);
     }
+    ctx.setLineDash([]);
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -227,7 +257,7 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
     confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
 
     const dataUrl = canvas.toDataURL('image/png');
-    onSaveDrawing(dataUrl, heroName || 'My Hand-Drawn Hero');
+    onSaveDrawing(dataUrl, heroName || 'My Hand-Drawn Hero', currentTemplate);
     onClose();
   };
 
@@ -277,6 +307,7 @@ export const DrawHeroModal: React.FC<DrawHeroModalProps> = ({
                 key={tmpl.id}
                 onClick={() => {
                   playBoingSound();
+                  setCurrentTemplate(tmpl.id);
                   clearAndDrawTemplate(tmpl.id);
                 }}
                 className="px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold transition-all"

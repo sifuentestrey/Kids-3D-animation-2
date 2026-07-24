@@ -60,12 +60,23 @@ export const Timeline: React.FC<TimelineProps> = ({
 }) => {
   const timePercentage = Math.min(100, (currentTime / duration) * 100);
 
-  const handleTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
+  const handleTrackInteraction = (clientX: number, rect: DOMRect) => {
+    const clickX = clientX - rect.left;
     const pct = Math.max(0, Math.min(1, clickX / rect.width));
     const newTime = Math.round(pct * duration * 10) / 10;
     onSeek(newTime);
+  };
+
+  const handleTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    handleTrackInteraction(e.clientX, rect);
+  };
+
+  const handleTouchScrub = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length > 0) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      handleTrackInteraction(e.touches[0].clientX, rect);
+    }
   };
 
   return (
@@ -193,7 +204,9 @@ export const Timeline: React.FC<TimelineProps> = ({
       {/* Scrub Bar & Keyframe Markers */}
       <div
         onClick={handleTrackClick}
-        className="w-full h-12 bg-slate-950 border border-slate-800 rounded-2xl relative cursor-pointer overflow-hidden flex items-center px-2 shadow-inner group"
+        onTouchStart={handleTouchScrub}
+        onTouchMove={handleTouchScrub}
+        className="w-full h-12 bg-slate-950 border border-slate-800 rounded-2xl relative cursor-pointer overflow-hidden flex items-center px-2 shadow-inner group touch-none"
       >
         {/* Seconds Ruler Marks */}
         {Array.from({ length: Math.ceil(duration) + 1 }).map((_, sec) => {

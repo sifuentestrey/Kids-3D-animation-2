@@ -22,6 +22,7 @@ interface UploadPaperModalProps {
   onClose: () => void;
   onAddCreature?: (creature: WorldCreature) => void;
   onAddCreatureToWorld?: (creature: WorldCreature) => void;
+  onOpenPrintModal?: () => void;
 }
 
 export const UploadPaperModal: React.FC<UploadPaperModalProps> = ({
@@ -29,6 +30,7 @@ export const UploadPaperModal: React.FC<UploadPaperModalProps> = ({
   onClose,
   onAddCreature,
   onAddCreatureToWorld,
+  onOpenPrintModal,
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -39,6 +41,7 @@ export const UploadPaperModal: React.FC<UploadPaperModalProps> = ({
   const [personality, setPersonality] = useState<string>('Loves bouncing and exploring 3D Kids Land!');
   const [behavior, setBehavior] = useState<BehaviorMode>('wander');
   const [soundFx, setSoundFx] = useState<'boing' | 'pop' | 'march' | 'fanfare' | 'giggle'>('boing');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('dino');
   const [isAnalyzingAI, setIsAnalyzingAI] = useState<boolean>(false);
 
   if (!isOpen) return null;
@@ -122,6 +125,7 @@ export const UploadPaperModal: React.FC<UploadPaperModalProps> = ({
       heightOffset: 0,
       tiltAngle: 0,
       depthThickness: 0.15,
+      templateId: selectedTemplateId,
     };
 
     if (onAddCreatureToWorld) onAddCreatureToWorld(newCreature);
@@ -181,6 +185,20 @@ export const UploadPaperModal: React.FC<UploadPaperModalProps> = ({
               onChange={handleFileChange}
               className="hidden"
             />
+
+            {onOpenPrintModal && (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  playPopSound();
+                  onClose();
+                  onOpenPrintModal();
+                }}
+                className="mt-2 text-xs font-bold text-amber-300 hover:text-amber-200 underline flex items-center justify-center gap-1 cursor-pointer"
+              >
+                🖨️ Don't have paper drawings yet? Click here to print sheets or draw digitally!
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -262,6 +280,26 @@ export const UploadPaperModal: React.FC<UploadPaperModalProps> = ({
 
               {/* Creature Settings */}
               <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                    Template Rig Anatomy (3D Motion):
+                  </label>
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(e) => setSelectedTemplateId(e.target.value)}
+                    className="bg-slate-900 text-xs font-bold text-amber-300 p-2 rounded-xl border border-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  >
+                    <option value="dino">🦖 Dino (Head Bob, Stompy Legs, Tail Wag)</option>
+                    <option value="robot">🤖 Robot (Robotic Head, Piston Legs, Marching Arms)</option>
+                    <option value="unicorn">🦄 Unicorn (Flapping Wings, Galloping Hooves)</option>
+                    <option value="cat">🐱 Kitten (Head Tilt, Paw Patter, Wiggling Tail)</option>
+                    <option value="rocket">🚀 Space Rocket (Thruster Flame Blast, Fins)</option>
+                    <option value="monster">👾 Monster (Jelly Jiggle, Overhead Arm Wave)</option>
+                    <option value="hero">🦸 Superhero (Flight Pose, Fluttering Cape)</option>
+                    <option value="blank">🎨 Custom Doodle (Classic Puppet Rig)</option>
+                  </select>
+                </div>
+
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Creature Name:

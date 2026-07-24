@@ -44,6 +44,7 @@ interface PlaygroundControlsProps {
   onRemoveToy?: (id: string) => void;
   onOpenUploadModal?: () => void;
   onOpenDrawModal?: () => void;
+  onOpenPrintModal?: () => void;
 }
 
 const BEHAVIORS: { id: BehaviorMode; label: string; emoji: string }[] = [
@@ -79,6 +80,7 @@ export const PlaygroundControls: React.FC<PlaygroundControlsProps> = ({
   onRemoveToy,
   onOpenUploadModal,
   onOpenDrawModal,
+  onOpenPrintModal,
 }) => {
   const activeCreature = creatures.find((c) => c.id === activeCreatureId) || creatures[0];
 
@@ -106,6 +108,15 @@ export const PlaygroundControls: React.FC<PlaygroundControlsProps> = ({
             <Radio className="w-4 h-4 text-amber-400 animate-pulse" /> Living Paper Friends ({creatures.length}):
           </label>
           <div className="flex items-center gap-1">
+            {onOpenPrintModal && (
+              <button
+                onClick={() => onOpenPrintModal()}
+                className="px-2 py-1 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[10px] rounded-lg shadow transition-transform active:scale-95 flex items-center gap-1"
+                title="Print drawing templates"
+              >
+                🖨️ Print Sheets
+              </button>
+            )}
             <button
               onClick={() => onOpenUploadModal?.()}
               className="px-2 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] rounded-lg shadow transition-transform active:scale-95 flex items-center gap-1"
